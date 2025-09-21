@@ -13,7 +13,10 @@ The system combines **LLM-powered reasoning**, **guideline-driven triage**, and 
 ---
 
 ## 🚀 How to Run
-
+localhost deployment 
+```
+git clone https://github.com/MIHIRrPATIL/GDHS_25_TESTER.git
+```
 ### 1. Frontend
 ```bash
 cd chikitsahaya
@@ -30,7 +33,12 @@ npm run start
 
 ### 3. Agentic AI
 ```bash
+conda create --name gdhs25 
+conda activate gdhs25
+pip install -r requirements.txt
+
 cd agent_stack/agents
+
 python3 triage_bot_app.py
 python3 diagnosis_agent_app.py
 python3 poa_agent_app.py
