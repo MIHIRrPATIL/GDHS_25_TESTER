@@ -292,9 +292,56 @@ app.post("/uploadFile", uploadSingle("labReport"), async(req, res)=>{
 })
 
 app.post("/storeSymptoms", async(req, res)=>{
-    
+    const symptom=req.symptom;
+    if(!symptom)
+    {
+        return res.status(400).json({error: "Give some symptoms"});
+    }
+
+    const accessToken=req.cookies.accessToken;
+    try{
+        const patient=jwt.verify(accessToken, process.env.JWT_SECRET);
+        if(!patient || !patient.email)
+        {
+            return res.status(400).json({error: "Unauthorized"});
+        }
+
+        const symptoms=await prisma.symptom.create({
+            data: {
+                email: patient.email,
+                symptom: symptom
+            }
+        })
+        res.sendStatus(200);
+    }
+    catch(error)
+    {
+        console.log(error);
+        return res.sendStatus(400);
+    }
 })
 
+app.get("/getSymptoms", async (req, res)=>{
+    try{
+        const patient=jwt.verify(accessToken, process.env.JWT_SECRET);
+        if(!patient || !patient.email)
+        {
+            return res.status(400).json({error: "Unauthorized"});
+        }
+
+        const symptoms=await prisma.symptom.findFirst({
+            where:{
+                email: patient.email
+            }
+        })
+        res.sendStatus(200);
+    }
+    catch(error)
+    {
+        console.log(error);
+        res.sendStatus(400);
+    }
+})
 
 app.listen(3000, ()=>{
     console.log("The server is running.")
