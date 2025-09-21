@@ -8,6 +8,7 @@ import cors from "cors"
 import cookieParser from "cookie-parser"
 import bodyParser from "body-parser"
 import { uploadSingle } from "./multer.js"
+import jwt from "jsonwebtoken"
 import { generateDoctorAccessToken, generatePatientAccessToken, validateAccessToken, patientAuth } from "./auth.js"
 
 dotenv.config()
@@ -291,35 +292,33 @@ app.post("/uploadFile", uploadSingle("labReport"), async(req, res)=>{
     }
 })
 
-app.post("/storeSymptoms", async(req, res)=>{
-    const symptom=req.symptom;
-    if(!symptom)
-    {
-        return res.status(400).json({error: "Give some symptoms"});
+app.post("/storeSymptoms", async (req, res) => {
+    const symptom = req.body.symptom; // fixed: use req.body.symptom
+    if (!symptom) {
+        return res.status(400).json({ error: "Give some symptoms" });
     }
 
-    const accessToken=req.cookies.accessToken;
-    try{
-        const patient=jwt.verify(accessToken, process.env.JWT_SECRET);
-        if(!patient || !patient.email)
-        {
-            return res.status(400).json({error: "Unauthorized"});
+    const accessToken = req.cookies.accessToken;
+    try {
+        const patient = jwt.verify(accessToken, process.env.JWT_SECRET);
+        if (!patient || !patient.email) {
+            return res.status(400).json({ error: "Unauthorized" });
         }
 
-        const symptoms=await prisma.symptom.create({
-            data: {
-                email: patient.email,
-                symptom: symptom
-            }
-        })
+        // Upsert: update if exists, else create
+        await prisma.symptom.upsert({
+            where: { email: patient.email }, // assuming 'email' is unique in your Symptom model
+            update: { symptom: symptom },
+            create: { email: patient.email, symptom: symptom }
+        });
+
         res.sendStatus(200);
-    }
-    catch(error)
-    {
+    } catch (error) {
         console.log(error);
         return res.sendStatus(400);
     }
-})
+});
+
 
 app.get("/getSymptoms", async (req, res)=>{
     try{
@@ -342,6 +341,32 @@ app.get("/getSymptoms", async (req, res)=>{
         res.sendStatus(400);
     }
 })
+
+app.get("/getPatientDetails", async (req, res)=>{
+    const details=await prisma.patient.findFirst();
+    return res.status(200).json(details);
+})
+
+app.get("/getPdf", (req, res) => {
+    const pdfPath = path.join(__dirname, "uploads/pdfs/cbc-report-format.pdf");
+    res.sendFile(pdfPath, (err) => {
+        if (err) {
+            console.error(err);
+            res.status(500).send("Error sending PDF file");
+        }
+    });
+});
+
+// Serve the PNG
+app.get("/getImage", (req, res) => {
+    const imagePath = path.join(__dirname, "uploads/images/Screenshot 2025-09-21 113040.png");
+    res.sendFile(imagePath, (err) => {
+        if (err) {
+            console.error(err);
+            res.status(500).send("Error sending image file");
+        }
+    });
+});
 
 app.listen(3000, ()=>{
     console.log("The server is running.")
