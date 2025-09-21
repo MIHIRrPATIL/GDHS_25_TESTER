@@ -30,6 +30,8 @@ interface ExportSummaryModalProps {
   patientName: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  selectedDisease?: any;
+  actionPlan?: any;
 }
 
 const EXPORT_FORMATS: ExportFormat[] = [
@@ -69,7 +71,9 @@ export function ExportSummaryModal({
   encounterId, 
   patientName, 
   open, 
-  onOpenChange 
+  onOpenChange,
+  selectedDisease,
+  actionPlan
 }: ExportSummaryModalProps) {
   const [exportOptions, setExportOptions] = useState<ExportOptions>({
     format: 'pdf',
@@ -78,7 +82,9 @@ export function ExportSummaryModal({
     includeProblemList: true,
     includeFeatures: true,
     includeNotes: true,
-    includeInsights: false
+    includeInsights: true,
+    includeDiagnosis: true,
+    includeActionPlan: true
   });
   const [exporting, setExporting] = useState(false);
   const [previewData, setPreviewData] = useState<string>('');
@@ -86,16 +92,377 @@ export function ExportSummaryModal({
 
   const selectedFormat = EXPORT_FORMATS.find(f => f.type === exportOptions.format);
 
+  // Check if any content options are selected
+  const hasSelectedContent = Object.entries(exportOptions).some(([key, value]) => 
+    key.startsWith('include') && value === true
+  );
+
+  // Helper functions for generating different format previews
+  const generateJSONPreview = (data: any) => {
+    const jsonData: any = {
+      patient: {
+        name: `${data.firstName} ${data.lastName}`,
+        medicalRecordNumber: data.medicalRecordNumber
+      },
+      encounterId,
+      exportedAt: new Date().toISOString()
+    };
+    
+    if (exportOptions.includeVitals) {
+      jsonData.vitals = data.vitals;
+    }
+    
+    if (exportOptions.includeMedications) {
+      jsonData.medications = data.medications;
+    }
+    
+    if (exportOptions.includeFeatures) {
+      jsonData.symptoms = data.features;
+    }
+    
+    if (exportOptions.includeNotes) {
+      jsonData.clinicalNotes = data.notes;
+    }
+    
+    if (exportOptions.includeInsights) {
+      jsonData.aiInsights = [
+        'Consider ruling out acute coronary syndrome based on symptoms',
+        'Recommend ECG and cardiac enzyme testing',
+        'Monitor vital signs closely for changes'
+      ];
+    }
+    
+    if (exportOptions.includeDiagnosis && selectedDisease) {
+      jsonData.selectedDiagnosis = {
+        name: selectedDisease.name,
+        confidence: Math.round(selectedDisease.probability * 100),
+        description: selectedDisease.description,
+        isCustom: selectedDisease.isCustom || false
+      };
+    }
+    
+    if (exportOptions.includeActionPlan && actionPlan) {
+      jsonData.treatmentPlan = {
+        urgency: actionPlan.urgency,
+        duration: actionPlan.estimatedDuration,
+        followUpRequired: actionPlan.followUpRequired,
+        steps: actionPlan.steps
+      };
+    }
+    
+    return JSON.stringify(jsonData, null, 2);
+  };
+
+  const generateFHIRPreview = (data: any) => {
+    const fhirBundle: any = {
+      resourceType: 'Bundle',
+      id: encounterId,
+      type: 'document',
+      timestamp: new Date().toISOString(),
+      entry: [
+        {
+          resource: {
+            resourceType: 'Patient',
+            name: [{ given: [data.firstName], family: data.lastName }],
+            identifier: [{ value: data.medicalRecordNumber }]
+          }
+        }
+      ]
+    };
+    
+    if (exportOptions.includeVitals) {
+      fhirBundle.entry.push({
+        resource: {
+          resourceType: 'Observation',
+          status: 'final',
+          category: [{ coding: [{ code: 'vital-signs' }] }],
+          component: [
+            { code: { display: 'Systolic BP' }, valueQuantity: { value: data.vitals.bloodPressureSystolic, unit: 'mmHg' } },
+            { code: { display: 'Diastolic BP' }, valueQuantity: { value: data.vitals.bloodPressureDiastolic, unit: 'mmHg' } },
+            { code: { display: 'Heart Rate' }, valueQuantity: { value: data.vitals.heartRate, unit: 'bpm' } }
+          ]
+        }
+      });
+    }
+    
+    if (exportOptions.includeInsights) {
+      fhirBundle.entry.push({
+        resource: {
+          resourceType: 'ClinicalImpression',
+          status: 'completed',
+          subject: { reference: `Patient/${data.medicalRecordNumber}` },
+          summary: 'AI-generated clinical insights and recommendations',
+          finding: [
+            { itemCodeableConcept: { text: 'Consider ruling out acute coronary syndrome' } },
+            { itemCodeableConcept: { text: 'Recommend ECG and cardiac enzyme testing' } }
+          ]
+        }
+      });
+    }
+    
+    if (exportOptions.includeDiagnosis && selectedDisease) {
+      fhirBundle.entry.push({
+        resource: {
+          resourceType: 'Condition',
+          clinicalStatus: { coding: [{ code: 'active' }] },
+          code: { text: selectedDisease.name },
+          note: [{ text: selectedDisease.description }],
+          meta: { 
+            tag: selectedDisease.isCustom ? [{ code: 'doctor-added' }] : [{ code: 'ai-suggested' }]
+          }
+        }
+      });
+    }
+    
+    if (exportOptions.includeActionPlan && actionPlan) {
+      fhirBundle.entry.push({
+        resource: {
+          resourceType: 'CarePlan',
+          status: 'active',
+          intent: 'plan',
+          title: 'Treatment Plan',
+          description: `${actionPlan.urgency} priority plan with estimated duration: ${actionPlan.estimatedDuration}`,
+          activity: actionPlan.steps.map((step: any, index: number) => ({
+            detail: {
+              code: { text: step.title },
+              status: 'not-started',
+              description: step.description,
+              scheduledTiming: step.estimatedTime ? { repeat: { duration: step.estimatedTime } } : undefined
+            }
+          }))
+        }
+      });
+    }
+    
+    return JSON.stringify(fhirBundle, null, 2);
+  };
+
+  const generatePDFPreview = (data: any) => {
+    let content = `MEDICAL SUMMARY\n`;
+    content += `================\n\n`;
+    content += `Patient: ${data.firstName} ${data.lastName}\n`;
+    content += `MRN: ${data.medicalRecordNumber}\n`;
+    content += `Date: ${new Date().toLocaleDateString()}\n`;
+    content += `Encounter ID: ${encounterId}\n\n`;
+    
+    if (exportOptions.includeVitals) {
+      content += `VITAL SIGNS\n`;
+      content += `-----------\n`;
+      content += `Blood Pressure: ${data.vitals.bloodPressureSystolic}/${data.vitals.bloodPressureDiastolic} mmHg\n`;
+      content += `Heart Rate: ${data.vitals.heartRate} bpm\n`;
+      content += `Temperature: ${data.vitals.temperature}°F\n`;
+      content += `Oxygen Saturation: ${data.vitals.oxygenSaturation}%\n\n`;
+    }
+    
+    if (exportOptions.includeMedications) {
+      content += `CURRENT MEDICATIONS\n`;
+      content += `------------------\n`;
+      data.medications.forEach((med: any) => {
+        content += `• ${med.name} ${med.dosage} - ${med.frequency}\n`;
+      });
+      content += `\n`;
+    }
+    
+    if (exportOptions.includeFeatures) {
+      content += `SYMPTOMS & FINDINGS\n`;
+      content += `------------------\n`;
+      data.features.forEach((feature: any) => {
+        content += `• ${feature.name}`;
+        if (feature.severity) content += ` (${feature.severity})`;
+        if (feature.description) content += ` - ${feature.description}`;
+        content += `\n`;
+      });
+      content += `\n`;
+    }
+    
+    if (exportOptions.includeInsights) {
+      content += `AI INSIGHTS & RECOMMENDATIONS\n`;
+      content += `-----------------------------\n`;
+      content += `• Consider ruling out acute coronary syndrome based on symptoms\n`;
+      content += `• Recommend ECG and cardiac enzyme testing\n`;
+      content += `• Monitor vital signs closely for changes\n`;
+      content += `• Patient may benefit from cardiology consultation\n`;
+      content += `\n`;
+    }
+    
+    if (exportOptions.includeDiagnosis && selectedDisease) {
+      content += `SELECTED DIAGNOSIS\n`;
+      content += `-----------------\n`;
+      content += `Primary Diagnosis: ${selectedDisease.name}\n`;
+      content += `Confidence: ${Math.round(selectedDisease.probability * 100)}%\n`;
+      content += `Description: ${selectedDisease.description}\n`;
+      if (selectedDisease.isCustom) {
+        content += `Note: Doctor-added diagnosis\n`;
+      }
+      content += `\n`;
+    }
+    
+    if (exportOptions.includeActionPlan && actionPlan) {
+      content += `TREATMENT PLAN\n`;
+      content += `-------------\n`;
+      content += `Urgency: ${actionPlan.urgency.toUpperCase()}\n`;
+      content += `Duration: ${actionPlan.estimatedDuration}\n`;
+      content += `Follow-up Required: ${actionPlan.followUpRequired ? 'Yes' : 'No'}\n\n`;
+      content += `Action Steps:\n`;
+      actionPlan.steps.forEach((step: any, index: number) => {
+        content += `${index + 1}. ${step.title} (${step.priority})\n`;
+        content += `   ${step.description}\n`;
+        if (step.estimatedTime) {
+          content += `   Time: ${step.estimatedTime}\n`;
+        }
+        content += `\n`;
+      });
+    }
+    
+    if (exportOptions.includeNotes) {
+      content += `CLINICAL NOTES\n`;
+      content += `-------------\n`;
+      data.notes.forEach((note: string) => {
+        content += `${note}\n`;
+      });
+      content += `\n`;
+    }
+    
+    return content;
+  };
+
+  const generateDOCXPreview = (data: any) => {
+    let content = `[WORD DOCUMENT PREVIEW]\n\n`;
+    content += `MEDICAL SUMMARY\n`;
+    content += `===============\n\n`;
+    content += `Patient: ${data.firstName} ${data.lastName}\n`;
+    content += `MRN: ${data.medicalRecordNumber}\n`;
+    content += `Date: ${new Date().toLocaleDateString()}\n`;
+    content += `Encounter ID: ${encounterId}\n\n`;
+    
+    if (exportOptions.includeVitals) {
+      content += `🔍 VITAL SIGNS\n`;
+      content += `• Blood Pressure: ${data.vitals.bloodPressureSystolic}/${data.vitals.bloodPressureDiastolic} mmHg\n`;
+      content += `• Heart Rate: ${data.vitals.heartRate} bpm\n`;
+      content += `• Temperature: ${data.vitals.temperature}°F\n`;
+      content += `• Oxygen Saturation: ${data.vitals.oxygenSaturation}%\n\n`;
+    }
+    
+    if (exportOptions.includeMedications) {
+      content += `💊 CURRENT MEDICATIONS\n`;
+      data.medications.forEach((med: any) => {
+        content += `• ${med.name} ${med.dosage} - ${med.frequency}\n`;
+      });
+      content += `\n`;
+    }
+    
+    if (exportOptions.includeInsights) {
+      content += `🧠 AI INSIGHTS & RECOMMENDATIONS\n`;
+      content += `• Consider ruling out acute coronary syndrome based on symptoms\n`;
+      content += `• Recommend ECG and cardiac enzyme testing\n`;
+      content += `• Monitor vital signs closely for changes\n`;
+      content += `• Patient may benefit from cardiology consultation\n`;
+      content += `\n`;
+    }
+    
+    if (exportOptions.includeDiagnosis && selectedDisease) {
+      content += `🩺 SELECTED DIAGNOSIS\n`;
+      content += `Primary Diagnosis: ${selectedDisease.name}\n`;
+      content += `Confidence: ${Math.round(selectedDisease.probability * 100)}%\n`;
+      content += `Description: ${selectedDisease.description}\n`;
+      if (selectedDisease.isCustom) {
+        content += `[Doctor-added diagnosis]\n`;
+      }
+      content += `\n`;
+    }
+    
+    if (exportOptions.includeActionPlan && actionPlan) {
+      content += `📋 TREATMENT PLAN\n`;
+      content += `Urgency: ${actionPlan.urgency.toUpperCase()}\n`;
+      content += `Duration: ${actionPlan.estimatedDuration}\n`;
+      content += `Follow-up Required: ${actionPlan.followUpRequired ? 'Yes' : 'No'}\n\n`;
+      content += `Action Steps:\n`;
+      actionPlan.steps.forEach((step: any, index: number) => {
+        content += `${index + 1}. ${step.title} (${step.priority})\n`;
+        content += `   ${step.description}\n`;
+        if (step.estimatedTime) {
+          content += `   ⏱️ Time: ${step.estimatedTime}\n`;
+        }
+        content += `\n`;
+      });
+    }
+    
+    content += `\n[This is a preview. Actual WORD document will be properly formatted with headers, styling, and layout.]`;
+    
+    return content;
+  };
+
+  const generatePreview = () => {
+    const format = exportOptions.format;
+    
+    // Mock patient data for preview
+    const mockPatientData = {
+      firstName: 'Sarah',
+      lastName: 'Johnson',
+      medicalRecordNumber: 'MR001234',
+      vitals: {
+        bloodPressureSystolic: 120,
+        bloodPressureDiastolic: 80,
+        heartRate: 72,
+        temperature: 98.6,
+        oxygenSaturation: 98
+      },
+      medications: [
+        { name: 'Lisinopril', dosage: '10mg', frequency: 'Daily' },
+        { name: 'Metformin', dosage: '500mg', frequency: 'Twice daily' }
+      ],
+      features: [
+        { name: 'Chest pain', severity: 'moderate', description: 'Sharp, stabbing pain in left chest' },
+        { name: 'Shortness of breath', severity: 'mild' }
+      ],
+      notes: [
+        'Patient presents with chest discomfort and shortness of breath.',
+        'Physical examination reveals normal heart sounds.',
+        'No signs of acute distress noted.'
+      ]
+    };
+    
+    switch (format) {
+      case 'json':
+        return generateJSONPreview(mockPatientData);
+      case 'fhir':
+        return generateFHIRPreview(mockPatientData);
+      case 'pdf':
+        return generatePDFPreview(mockPatientData);
+      case 'docx':
+        return generateDOCXPreview(mockPatientData);
+      default:
+        return generateJSONPreview(mockPatientData);
+    }
+  };
+
+  // Update preview when options change
+  const previewContent = generatePreview();
+
+  const getFileExtension = (format: ExportFormat['type']) => {
+    switch (format) {
+      case 'pdf': return 'pdf';
+      case 'docx': return 'docx';
+      case 'json': return 'json';
+      case 'fhir': return 'json';
+      default: return 'txt';
+    }
+  };
+
   const handleExport = async () => {
     setExporting(true);
     try {
-      const blob = await exportSummary(encounterId, exportOptions);
+      const blob = await exportSummary(encounterId, exportOptions, selectedDisease, actionPlan);
       
       // Create download link
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${patientName.replace(/\s+/g, '_')}_summary_${encounterId}.${exportOptions.format}`;
+      
+      const fileExtension = getFileExtension(exportOptions.format);
+      const fileName = `${patientName.replace(/\s+/g, '_')}_summary_${encounterId}_${new Date().toISOString().split('T')[0]}.${fileExtension}`;
+      a.download = fileName;
+      
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -103,11 +470,12 @@ export function ExportSummaryModal({
       
       toast({
         title: "Export successful",
-        description: `Summary has been exported as ${exportOptions.format.toUpperCase()}`
+        description: `Summary exported as ${fileName}`
       });
       
       onOpenChange(false);
     } catch (error) {
+      console.error('Export error:', error);
       toast({
         title: "Export failed",
         description: "There was an error exporting the summary",
@@ -119,10 +487,10 @@ export function ExportSummaryModal({
   };
 
   const handleCopyJSON = async () => {
-    if (exportOptions.format !== 'json') return;
+    if (exportOptions.format !== 'json' || !hasSelectedContent) return;
     
     try {
-      const blob = await exportSummary(encounterId, exportOptions);
+      const blob = await exportSummary(encounterId, exportOptions, selectedDisease, actionPlan);
       const text = await blob.text();
       
       await navigator.clipboard.writeText(text);
@@ -131,59 +499,13 @@ export function ExportSummaryModal({
         description: "JSON data has been copied to your clipboard"
       });
     } catch (error) {
+      console.error('Copy error:', error);
       toast({
         title: "Copy failed",
         description: "Could not copy to clipboard",
         variant: "destructive"
       });
     }
-  };
-
-  const generatePreview = () => {
-    const sections: string[] = [];
-    
-    sections.push(`# Medical Summary - ${patientName}`);
-    sections.push(`**Encounter ID:** ${encounterId}`);
-    sections.push(`**Export Date:** ${new Date().toLocaleDateString()}`);
-    sections.push('');
-    
-    if (exportOptions.includeVitals) {
-      sections.push('## Vital Signs');
-      sections.push('- Blood Pressure: 120/80 mmHg');
-      sections.push('- Heart Rate: 72 bpm');
-      sections.push('- Temperature: 98.6°F');
-      sections.push('- Oxygen Saturation: 98%');
-      sections.push('');
-    }
-    
-    if (exportOptions.includeMedications) {
-      sections.push('## Current Medications');
-      sections.push('- Lisinopril 10mg daily');
-      sections.push('- Metformin 500mg twice daily');
-      sections.push('');
-    }
-    
-    if (exportOptions.includeFeatures) {
-      sections.push('## Symptoms & Findings');
-      sections.push('- Chest pain (moderate severity)');
-      sections.push('- Shortness of breath (mild severity)');
-      sections.push('');
-    }
-    
-    if (exportOptions.includeNotes) {
-      sections.push('## Clinical Notes');
-      sections.push('Patient presents with chest discomfort...');
-      sections.push('');
-    }
-    
-    if (exportOptions.includeInsights) {
-      sections.push('## AI Insights');
-      sections.push('- Consider ruling out acute coronary syndrome');
-      sections.push('- Recommend ECG and cardiac enzymes');
-      sections.push('');
-    }
-    
-    return sections.join('\n');
   };
 
   return (
@@ -257,7 +579,9 @@ export function ExportSummaryModal({
                     { key: 'includeProblemList', label: 'Problem List', description: 'Active diagnoses' },
                     { key: 'includeFeatures', label: 'Symptoms & Findings', description: 'Clinical features' },
                     { key: 'includeNotes', label: 'Clinical Notes', description: 'Assessment and plan' },
-                    { key: 'includeInsights', label: 'AI Insights', description: 'AI-generated recommendations' }
+                    { key: 'includeInsights', label: 'AI Insights', description: 'AI-generated recommendations' },
+                    { key: 'includeDiagnosis', label: 'Selected Diagnosis', description: 'Doctor-confirmed diagnosis' },
+                    { key: 'includeActionPlan', label: 'Treatment Plan', description: 'Action steps and timeline' }
                   ].map((option) => (
                     <div key={option.key} className="flex items-start space-x-3">
                       <Checkbox
@@ -297,9 +621,19 @@ export function ExportSummaryModal({
               </CardHeader>
               <CardContent>
                 <div className="bg-muted/30 rounded-lg p-4 h-[400px] overflow-y-auto">
-                  <pre className="text-xs whitespace-pre-wrap font-mono">
-                    {generatePreview()}
-                  </pre>
+                  {hasSelectedContent ? (
+                    <pre className="text-xs whitespace-pre-wrap font-mono">
+                      {previewContent}
+                    </pre>
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-muted-foreground">
+                      <div className="text-center">
+                        <AlertTriangle className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                        <p className="text-sm">No content selected for export</p>
+                        <p className="text-xs">Please select at least one option to include in the export</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -311,13 +645,26 @@ export function ExportSummaryModal({
         {/* Actions */}
         <div className="flex items-center justify-between pt-4">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <CheckCircle className="h-4 w-4 text-success" />
-            <span>All required fields are included</span>
+            {hasSelectedContent ? (
+              <>
+                <CheckCircle className="h-4 w-4 text-success" />
+                <span>Ready for export</span>
+              </>
+            ) : (
+              <>
+                <AlertTriangle className="h-4 w-4 text-warning" />
+                <span>Select content options to export</span>
+              </>
+            )}
           </div>
           
           <div className="flex items-center gap-3">
             {exportOptions.format === 'json' && (
-              <Button variant="outline" onClick={handleCopyJSON}>
+              <Button 
+                variant="outline" 
+                onClick={handleCopyJSON}
+                disabled={!hasSelectedContent}
+              >
                 <Copy className="h-4 w-4 mr-2" />
                 Copy JSON
               </Button>
@@ -325,7 +672,7 @@ export function ExportSummaryModal({
             
             <Button
               onClick={handleExport}
-              disabled={exporting}
+              disabled={exporting || !hasSelectedContent}
               className="flex items-center gap-2"
             >
               {exporting ? (

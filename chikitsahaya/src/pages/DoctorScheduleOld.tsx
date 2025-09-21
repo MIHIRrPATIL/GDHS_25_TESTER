@@ -97,44 +97,6 @@ export default function DoctorSchedule() {
     }
   };
 
-  const getStatusColor = (status: ScheduleEvent['status']) => {
-    switch (status) {
-      case 'scheduled': return 'bg-blue-500/20 text-blue-700 border-blue-500/30';
-      case 'confirmed': return 'bg-green-500/20 text-green-700 border-green-500/30';
-      case 'in-progress': return 'bg-yellow-500/20 text-yellow-700 border-yellow-500/30';
-      case 'completed': return 'bg-emerald-500/20 text-emerald-700 border-emerald-500/30';
-      case 'cancelled': return 'bg-red-500/20 text-red-700 border-red-500/30';
-      case 'no-show': return 'bg-gray-500/20 text-gray-700 border-gray-500/30';
-      default: return 'bg-muted text-muted-foreground';
-    }
-  };
-
-  const updateEventStatus = (eventId: string, newStatus: ScheduleEvent['status']) => {
-    setEvents(prevEvents => 
-      prevEvents.map(event => 
-        event.id === eventId 
-          ? { ...event, status: newStatus, updatedAt: new Date().toISOString() }
-          : event
-      )
-    );
-    if (selectedEvent && selectedEvent.id === eventId) {
-      setSelectedEvent(prev => prev ? { ...prev, status: newStatus } : null);
-    }
-  };
-
-  const getUrgencyLevel = (event: ScheduleEvent) => {
-    if (event.type === 'patient-visit' && event.description?.toLowerCase().includes('emergency')) {
-      return 'critical';
-    }
-    if (event.type === 'consultation' || event.type === 'procedure') {
-      return 'high';
-    }
-    if (event.type === 'meeting') {
-      return 'medium';
-    }
-    return 'low';
-  };
-
   const formatTime = (dateString: string) => {
     return new Date(dateString).toLocaleTimeString('en-US', {
       hour: 'numeric',
@@ -167,6 +129,44 @@ export default function DoctorSchedule() {
     const newDate = new Date(selectedDate);
     newDate.setDate(newDate.getDate() + (direction === 'next' ? 1 : -1));
     setSelectedDate(newDate);
+  };
+
+  const updateEventStatus = (eventId: string, newStatus: ScheduleEvent['status']) => {
+    setEvents(prevEvents => 
+      prevEvents.map(event => 
+        event.id === eventId 
+          ? { ...event, status: newStatus, updatedAt: new Date().toISOString() }
+          : event
+      )
+    );
+    if (selectedEvent && selectedEvent.id === eventId) {
+      setSelectedEvent(prev => prev ? { ...prev, status: newStatus } : null);
+    }
+  };
+
+  const getStatusColor = (status: ScheduleEvent['status']) => {
+    switch (status) {
+      case 'scheduled': return 'bg-blue-500/20 text-blue-700 border-blue-500/30';
+      case 'confirmed': return 'bg-green-500/20 text-green-700 border-green-500/30';
+      case 'in-progress': return 'bg-yellow-500/20 text-yellow-700 border-yellow-500/30';
+      case 'completed': return 'bg-emerald-500/20 text-emerald-700 border-emerald-500/30';
+      case 'cancelled': return 'bg-red-500/20 text-red-700 border-red-500/30';
+      case 'no-show': return 'bg-gray-500/20 text-gray-700 border-gray-500/30';
+      default: return 'bg-muted text-muted-foreground';
+    }
+  };
+
+  const getUrgencyLevel = (event: ScheduleEvent) => {
+    if (event.type === 'patient-visit' && event.description?.toLowerCase().includes('emergency')) {
+      return 'critical';
+    }
+    if (event.type === 'consultation' || event.type === 'procedure') {
+      return 'high';
+    }
+    if (event.type === 'meeting') {
+      return 'medium';
+    }
+    return 'low';
   };
 
   const getUpcomingEvents = () => {
