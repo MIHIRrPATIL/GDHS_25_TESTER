@@ -29,7 +29,6 @@ export const DoctorLayout = () => {
   const navigation = [
     { name: 'Dashboard', href: '/doctor/dashboard', icon: Users },
     { name: 'Chat', href: '/doctor/chat', icon: MessageCircle },
-    { name: 'AI Triage', href: '/doctor/triage', icon: Stethoscope },
     { name: 'Patient Schedule', href: '/doctor/patient-schedule', icon: Calendar },
     { name: 'Doctor Schedule', href: '/doctor/doctor-schedule', icon: Calendar },
   ];
@@ -44,11 +43,13 @@ export const DoctorLayout = () => {
       <div className="min-h-screen flex w-full">
         <Sidebar collapsible="icon">
           <SidebarHeader>
-            <div className="flex items-center px-2 py-2">
-              <Stethoscope className="h-8 w-8 text-primary mr-2" />
-              <div className="group-data-[collapsible=icon]:hidden">
-                <h1 className="text-lg font-semibold text-foreground">Medical Triage</h1>
-                <p className="text-sm text-muted-foreground">Doctor Portal</p>
+            <div className="px-2 py-2">
+              <div className="flex items-center justify-start w-full h-8 rounded-md p-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:p-2">
+                <Stethoscope className="size-4 text-primary mr-2 flex-shrink-0 group-data-[collapsible=icon]:!size-6 group-data-[collapsible=icon]:mr-0" />
+                <div className="group-data-[collapsible=icon]:hidden min-w-0">
+                  <h1 className="text-sm font-medium text-foreground truncate">Medical Triage</h1>
+                  <p className="text-xs text-muted-foreground truncate">Doctor Portal</p>
+                </div>
               </div>
             </div>
           </SidebarHeader>
@@ -75,7 +76,7 @@ export const DoctorLayout = () => {
                   <SidebarMenuItem key={item.name}>
                     <SidebarMenuButton asChild isActive={isActive(item.href)}>
                       <Link to={item.href}>
-                        <Icon className="h-4 w-4" />
+                        <Icon />
                         <span>{item.name}</span>
                       </Link>
                     </SidebarMenuButton>
@@ -84,12 +85,15 @@ export const DoctorLayout = () => {
               })}
             </SidebarMenu>
 
-            {/* Command Palette Trigger */}
+             {/* Sidebar Toggle */}
             <div className="px-2 py-2 mt-auto border-t border-border">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="w-full justify-start text-muted-foreground group-data-[collapsible=icon]:justify-center"
+              <SidebarTrigger className="mb-2" />
+
+              {/* Command Palette Trigger */}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full h-8 text-sm justify-start rounded-md p-2 text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:p-2 [&>svg]:size-4 [&>svg]:shrink-0 group-data-[collapsible=icon]:[&>svg]:!size-6"
                 onClick={() => {
                   const event = new KeyboardEvent('keydown', {
                     key: 'k',
@@ -99,7 +103,7 @@ export const DoctorLayout = () => {
                   document.dispatchEvent(event);
                 }}
               >
-                <Command className="h-4 w-4" />
+                <Command />
                 <span className="group-data-[collapsible=icon]:hidden ml-2">Quick Search</span>
                 <span className="ml-auto text-xs bg-muted px-1.5 py-0.5 rounded group-data-[collapsible=icon]:hidden">⌘K</span>
               </Button>
@@ -107,15 +111,17 @@ export const DoctorLayout = () => {
           </SidebarContent>
 
           <SidebarFooter>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={logout}
-              className="w-full justify-start text-destructive hover:text-destructive group-data-[collapsible=icon]:justify-center"
-            >
-              <LogOut className="h-4 w-4" />
-              <span className="group-data-[collapsible=icon]:hidden ml-2">Logout</span>
-            </Button>
+            <div className="px-2 py-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={logout}
+                className="w-full h-8 text-sm justify-start rounded-md p-2 text-destructive hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:p-2 [&>svg]:size-4 [&>svg]:shrink-0 group-data-[collapsible=icon]:[&>svg]:!size-6"
+              >
+                <LogOut />
+                <span className="group-data-[collapsible=icon]:hidden ml-2">Logout</span>
+              </Button>
+            </div>
           </SidebarFooter>
         </Sidebar>
 
