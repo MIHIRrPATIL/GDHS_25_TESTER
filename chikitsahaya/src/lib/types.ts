@@ -146,6 +146,35 @@ export interface Attachment {
   uploadedAt: string;
 }
 
+export interface PossibleDisease {
+  id: string;
+  name: string;
+  probability: number;
+  description: string;
+  symptoms: string[];
+  isCustom?: boolean;
+}
+
+export interface ActionPlan {
+  id: string;
+  diseaseId: string;
+  steps: ActionStep[];
+  urgency: 'low' | 'medium' | 'high' | 'critical';
+  estimatedDuration: string;
+  followUpRequired: boolean;
+  createdAt: string;
+}
+
+export interface ActionStep {
+  id: string;
+  title: string;
+  description: string;
+  type: 'diagnostic' | 'treatment' | 'monitoring' | 'referral';
+  priority: 'immediate' | 'urgent' | 'routine';
+  estimatedTime?: string;
+  resources?: string[];
+}
+
 export interface AIInsight {
   id: string;
   patientId: string;
@@ -157,6 +186,9 @@ export interface AIInsight {
   confidence: number;
   sources: string[];
   recommendations: string[];
+  possibleDiseases: PossibleDisease[];
+  selectedDisease?: PossibleDisease;
+  actionPlan?: ActionPlan;
   createdAt: string;
   isAcknowledged: boolean;
   acknowledgedBy?: string;
@@ -219,6 +251,8 @@ export interface ExportOptions {
   includeFeatures: boolean;
   includeNotes: boolean;
   includeInsights: boolean;
+  includeDiagnosis: boolean;
+  includeActionPlan: boolean;
   dateRange?: {
     start: string;
     end: string;
