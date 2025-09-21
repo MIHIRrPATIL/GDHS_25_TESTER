@@ -1,0 +1,21 @@
+# Ignore guideline and ICD PDF files
+pdfs/
+*.pdf
+
+# Ignore FAISS index files
+*.index
+
+# Ignore JSON metadata and docs
+*.json
+
+agent_stack/notes.txt
+
+# Python cache / venv
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+venv/
+.venv/
+

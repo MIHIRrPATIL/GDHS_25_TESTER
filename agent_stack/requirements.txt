@@ -1,0 +1,8 @@
+numpy
+requests
+sentence-transformers
+faiss-cpu
+tqdm
+pypdf2
+google-genai
+flask

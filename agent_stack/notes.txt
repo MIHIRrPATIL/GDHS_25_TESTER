@@ -1,0 +1,9 @@
+ICD & disease metadata → Pull from ICD10API or WHO ICD API.
+
+Symptom mappings → Use UMLS API (SNOMED → ICD links).
+
+Guidelines → Fetch via NICE API or load PDFs into a FAISS vector DB.
+
+Labs/imaging recommendations → Use LOINC API for structured lab codes.
+
+Emergency protocols → Ingest PDFs (ACLS/WHO) into embeddings.
