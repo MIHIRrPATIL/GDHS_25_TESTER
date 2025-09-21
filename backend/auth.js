@@ -37,4 +37,17 @@ const validateAccessToken=(req)=>{
     }
 }
 
-export {validateAccessToken, generateDoctorAccessToken, generatePatientAccessToken}
+const patientAuth=async(req, res, next)=>{
+    try{
+        const patient=validateAccessToken(req);
+        req.patient= req.patient || {};
+        req.patient.email=patient.email;
+        next();
+    }
+    catch(error)
+    {
+        res.sendStatus(400);
+    }
+}
+
+export {validateAccessToken, generateDoctorAccessToken, generatePatientAccessToken, patientAuth}

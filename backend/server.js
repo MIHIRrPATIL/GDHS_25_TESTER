@@ -1,11 +1,14 @@
 import express from "express"
 import dotenv from "dotenv"
 import getSymptoms from "./prompts.js"
+import analyzeLabs from "./analyzeLabs.js"
+import extractText from "./utils/extractText.js"
 import {PrismaClient} from "@prisma/client"
 import cors from "cors"
 import cookieParser from "cookie-parser"
 import bodyParser from "body-parser"
-import { generateDoctorAccessToken, generatePatientAccessToken, validateAccessToken } from "./auth.js"
+import { uploadSingle } from "./multer.js"
+import { generateDoctorAccessToken, generatePatientAccessToken, validateAccessToken, patientAuth } from "./auth.js"
 
 dotenv.config()
 const app=express()
@@ -231,6 +234,23 @@ app.post("/doctor/login", async (req, res) => {
     return res.status(500).json({ error: "Internal server error." });
   }
 });
+
+app.post("/uploadFile", patientAuth, uploadSingle("labReport"), async(req, res)=>{
+    try{
+        const filepath=req.fullFilePath;
+        const blob=extractText(filepath);
+        const symptom=JSON.parse(analyzeLabs(blob));
+        return res.status(200).json(symptom);
+    }
+    catch(error)
+    {
+        console.log(error);
+    }
+})
+
+app.post("/storeSymptoms", async(req, res)=>{
+    
+})
 
 
 app.listen(3000, ()=>{
