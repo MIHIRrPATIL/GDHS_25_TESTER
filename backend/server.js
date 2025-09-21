@@ -14,6 +14,27 @@ app.use(cookieParser())
 app.use(bodyParser.json())
 const prisma=new PrismaClient()
 
+const auth=async (req, res, next)=>{
+    const accessToken=req.cookies.accessToken;
+    if(!accessToken) return res.status(401).json({error: "Unauthorized"});
+    const isValid=await validateAccessToken(req);
+    if(!isValid) return res.status(401).json({error: "Unauthorized"});
+    req.patient={};
+    req.patient.email=isValid.email;
+    next();
+}
+
+app.get("/getPatientEmail", auth, async(req, res)=>{
+    const email=req.patient.email;
+    if(!email || email.trim()==="") return res.status(400).json({error: "Email is required."}); 
+    const patient=await prisma.patient.findFirst({
+        where:{
+            email: email,
+        }
+    })
+    if(!patient) return res.status(404).json({error: "Patient not found."});
+    return res.status(200).json({id: patient.id});
+})
 
 app.post("/getSymptomsFromDoctor", async(req, res)=>{
     const patient=req.body.patient
@@ -112,7 +133,7 @@ app.post("/patient/signUp", async (req, res)=>{
             familyHistory: familyHistory
         }
     })
-    const accessToken=generatePatientAccessToken();
+    const accessToken=generatePatientAccessToken(email);
     res.cookie("accessToken", accessToken, {
           httpOnly: true,
           secure: false,
@@ -131,7 +152,7 @@ app.post("/patient/logIn", async(req, res)=>{
     })
 
     if(!user || user.password!==password) return res.status(400).json({error: "Wrong credentials."});
-    const accessToken=generatePatientAccessToken()
+    const accessToken=generatePatientAccessToken(email)
     res.cookie("accessToken", accessToken, {
           httpOnly: true,
           secure: false,
@@ -164,7 +185,7 @@ app.post("/doctor/signUp", async(req, res)=>{
         }
     })
 
-    const accessToken=generateDoctorAccessToken();
+    const accessToken=generateDoctorAccessToken(email);
     res.cookie("accessToken", accessToken, {
           httpOnly: true,
           secure: false,
@@ -196,7 +217,7 @@ app.post("/doctor/login", async (req, res) => {
     }
 
     // Generate access token
-    const accessToken = generateDoctorAccessToken();
+    const accessToken = generateDoctorAccessToken(email);
 
     // Set cookie
     res.cookie("accessToken", accessToken, {

@@ -26,6 +26,7 @@ model Patient {
   weight         Int
   documents      Documents[]
   mapping        Mapping[]
+  Symptom        Symptom[]
 }
 
 model Documents {
@@ -50,4 +51,11 @@ model Mapping {
   patientId String
   doctor    Doctor  @relation(fields: [doctorId], references: [doctorId])
   patient   Patient @relation(fields: [patientId], references: [patientId])
+}
+
+model Symptom {
+  id       Int      @id(map: "symptom_pkey") @default(autoincrement())
+  patient  String?
+  symptoms Json?    @db.Json
+  Patient  Patient? @relation(fields: [patient], references: [patientId], onDelete: NoAction, onUpdate: NoAction, map: "constraint_1")
 }

@@ -27,11 +27,12 @@ const validateAccessToken=(req)=>{
         {
             return null;
         }
-        const validatedUser=jwt.verify(accessToken, process.env.JWT_PRIVATE_KEY);
+        const validatedUser=jwt.verify(accessToken, process.env.JWT_SECRET);
         return validatedUser;
     }
     catch(error)
     {
+        console.log(error);
         return null;
     }
 }
