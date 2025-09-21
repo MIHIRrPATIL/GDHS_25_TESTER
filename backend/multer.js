@@ -33,7 +33,7 @@ const storage = multer.diskStorage({
   filename: function (req, file, cb) {
     const ext = path.extname(file.originalname);
     const baseName = path.basename(file.originalname, ext);
-    cb(null, `${req.patient.email}-${baseName}${ext}`);
+    cb(null, `${baseName}${ext}`);
   },
 });
 
@@ -47,7 +47,7 @@ const uploadSingle = (fieldname) => {
 
       if (req.file) {
         // Multer gives us the full path
-        req.fileFullPath = req.file.path; 
+        req.fullFilePath = req.file.path; 
       }
       next();
     });

@@ -23,6 +23,7 @@ import PatientDashboard from "./pages/PatientDashboard";
 import PatientProfile from "./pages/PatientProfile";
 import PatientMessages from "./pages/PatientMessages";
 import PatientOnboarding from "./pages/PatientOnboarding";
+import LabScanner from "./pages/LabScanner";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -65,6 +66,7 @@ const App = () => (
                 <Route path="profile" element={<PatientProfile />} />
                 {/* Placeholder routes for future implementation */}
                 <Route path="messages" element={<PatientMessages />} />
+                <Route path="lab-scanner" element={<LabScanner />} />
                 <Route path="prescriptions" element={<div className="p-8 text-center text-muted-foreground">Prescriptions feature coming soon</div>} />
                 <Route index element={<Navigate to="dashboard" replace />} />
               </Route>
