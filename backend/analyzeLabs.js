@@ -7,7 +7,7 @@ Your task:
 1. Extract all **possible symptoms or abnormal findings** that the report suggests the patient may have.
 2. Focus only on findings that directly relate to patient condition — avoid including test names, values, or medical jargon unless it directly implies a symptom.
 3. The output should be strictly in JSON format only no comments or anything else should be there in output.
-4. Output a JSON object with the following structure:
+4. Output strictly JSON object no additional characters or texts you must reply as per the following structure:
 
 {
   "symptoms": [

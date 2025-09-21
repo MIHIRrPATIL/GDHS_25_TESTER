@@ -12,7 +12,8 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
-  Stethoscope
+  Stethoscope,
+  Scan
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -283,20 +284,24 @@ const PatientDashboard = () => {
             <CardTitle>Quick Actions</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
               <Button variant="outline" className="h-auto p-4 flex flex-col items-center space-y-2">
                 <Calendar className="h-6 w-6" />
                 <span className="text-sm">Schedule Appointment</span>
               </Button>
-              <Button variant="outline" className="h-auto p-4 flex flex-col items-center space-y-2">
+              <Button variant="outline" className="h-auto p-4 flex flex-col items-center space-y-2" onClick={() => navigate('/patient/messages')}>
                 <MessageCircle className="h-6 w-6" />
-                <span className="text-sm">Message Doctor</span>
+                <span className="text-sm">Talk with AI</span>
+              </Button>
+              <Button variant="outline" className="h-auto p-4 flex flex-col items-center space-y-2" onClick={() => navigate('/patient/lab-scanner')}>
+                <Scan className="h-6 w-6" />
+                <span className="text-sm">Lab Scanner</span>
               </Button>
               <Button variant="outline" className="h-auto p-4 flex flex-col items-center space-y-2">
                 <Pill className="h-6 w-6" />
                 <span className="text-sm">Request Refill</span>
               </Button>
-              <Button variant="outline" className="h-auto p-4 flex flex-col items-center space-y-2">
+              <Button variant="outline" className="h-auto p-4 flex flex-col items-center space-y-2" onClick={() => navigate('/patient/prescriptions')}>
                 <Activity className="h-6 w-6" />
                 <span className="text-sm">View Results</span>
               </Button>

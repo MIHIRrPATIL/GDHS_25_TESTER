@@ -12,7 +12,14 @@ import { generateDoctorAccessToken, generatePatientAccessToken, validateAccessTo
 
 dotenv.config()
 const app=express()
-app.use(cors())
+app.use(cors({
+  origin: ['http://localhost:8080', 'http://127.0.0.1:8080'], // Allow both localhost and 127.0.0.1
+  credentials: true, // Allow cookies to be sent
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Explicitly allow OPTIONS for preflight
+  allowedHeaders: ['Content-Type', 'Authorization'], // Allow these headers
+  preflightContinue: false, // Handle preflight automatically
+  optionsSuccessStatus: 204 // Some legacy browsers choke on 204
+}))
 app.use(cookieParser())
 app.use(bodyParser.json())
 const prisma=new PrismaClient()
@@ -235,16 +242,52 @@ app.post("/doctor/login", async (req, res) => {
   }
 });
 
-app.post("/uploadFile", patientAuth, uploadSingle("labReport"), async(req, res)=>{
+// Handle preflight OPTIONS request for uploadFile
+app.options("/uploadFile", (req, res) => {
+    res.header('Access-Control-Allow-Origin', req.headers.origin);
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
+    res.sendStatus(204);
+}); 
+
+app.post("/uploadFile", uploadSingle("labReport"), async(req, res)=>{
     try{
-        const filepath=req.fullFilePath;
-        const blob=extractText(filepath);
-        const symptom=JSON.parse(analyzeLabs(blob));
+        console.log('File uploaded:', req.file);
+        console.log('Full file path:', req.fullFilePath);
+        
+        if (!req.fullFilePath) {
+            return res.status(400).json({ error: "No file uploaded" });
+        }
+        
+        const filepath = req.fullFilePath;
+        const blob = await extractText(filepath); // await the Promise
+        console.log('Extracted text:', blob);
+        
+        const analysisResult =await analyzeLabs(blob);
+        console.log('Analysis result:', analysisResult);
+
+        function safeParseJSON(str) {
+            if (!str) return null;
+            try {
+              str = str.replace(/^```|```$/g, '').trim();
+              return JSON.parse(str);
+            } catch (e) {
+              console.error("Invalid JSON string", e);
+              return null;
+            }
+          }
+        
+        // Check if analysisResult is already an object or needs parsing
+        let symptom=safeParseJSON(analysisResult);
+        console.log('Analysis result:', symptom);
+        
         return res.status(200).json(symptom);
     }
     catch(error)
     {
-        console.log(error);
+        console.log('Upload error:', error);
+        return res.status(500).json({ error: "Processing failed", details: error.message });
     }
 })
 

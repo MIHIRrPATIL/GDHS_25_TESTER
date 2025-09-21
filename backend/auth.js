@@ -22,7 +22,9 @@ const generateDoctorAccessToken=(email)=>{
 
 const validateAccessToken=(req)=>{
     try{
+        console.log('All cookies received:', req.cookies);
         const accessToken=req.cookies?.accessToken;
+        console.log('Access token:', accessToken);
         if(!accessToken)
         {
             return null;
@@ -40,12 +42,15 @@ const validateAccessToken=(req)=>{
 const patientAuth=async(req, res, next)=>{
     try{
         const patient=validateAccessToken(req);
+        console.log(patient)
         req.patient= req.patient || {};
         req.patient.email=patient.email;
+        console.log("patient auth")
         next();
     }
     catch(error)
     {
+        console.log(error)
         res.sendStatus(400);
     }
 }

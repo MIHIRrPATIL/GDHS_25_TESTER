@@ -6,7 +6,8 @@ import {
   Pill,
   LogOut,
   User,
-  Settings
+  Settings,
+  Scan
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
@@ -19,6 +20,7 @@ export const PatientLayout = () => {
     { name: 'Dashboard', href: '/patient/dashboard', icon: Heart },
     { name: 'Profile', href: '/patient/profile', icon: Settings },
     { name: 'Messages', href: '/patient/messages', icon: MessageCircle },
+    { name: 'Lab Scanner', href: '/patient/lab-scanner', icon: Scan },
     { name: 'Prescriptions', href: '/patient/prescriptions', icon: Pill },
   ];
 
